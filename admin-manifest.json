@@ -1,0 +1,21 @@
+{
+  "name": "Полотно | Панель управления",
+  "short_name": "Админ Полотно",
+  "description": "Управление меню и заказами",
+  "start_url": "/admin.html",
+  "display": "standalone",
+  "background_color": "#2C241B",
+  "theme_color": "#8B4513",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

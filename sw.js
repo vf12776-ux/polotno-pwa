@@ -1,9 +1,12 @@
-const CACHE_NAME = 'polotno-v1';
+const CACHE_NAME = 'polotno-v2'; // Обновил версию кэша
 const urlsToCache = [
   '/',
   '/index.html',
+  '/admin.html',
+  '/admin-manifest.json',
   '/style.css',
   '/app.js',
+  '/admin.js',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png'
