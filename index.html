@@ -7,34 +7,21 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
   <meta name="theme-color" content="#8B4513">
+  <style>
+    .product-img-main { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; background: #eee; }
+  </style>
 </head>
 <body>
   <header>
     <h1>🍩 Полотно</h1>
     <p>Пышки, крафт и настольные игры</p>
+    <a href="admin.html" style="color: #ffd700; font-size: 0.8em; text-decoration: none;">(Админка)</a>
   </header>
 
   <main>
     <h2>Наше меню</h2>
-    <div class="menu-grid">
-      <div class="card">
-        <h3>Пышка с беконом</h3>
-        <p>Хрустящая пышка с беконом и сырным соусом</p>
-        <span class="price">250 ₽</span>
-        <button class="add-btn" data-name="Пышка с беконом" data-price="250">В корзину</button>
-      </div>
-      <div class="card">
-        <h3>Пышка с карамелью</h3>
-        <p>Сладкая классика с домашней соленой карамелью</p>
-        <span class="price">200 ₽</span>
-        <button class="add-btn" data-name="Пышка с карамелью" data-price="200">В корзину</button>
-      </div>
-      <div class="card">
-        <h3>Крафтовый IPA</h3>
-        <p>Локальный индиа пэйл эль, 0.5л</p>
-        <span class="price">350 ₽</span>
-        <button class="add-btn" data-name="Крафтовый IPA" data-price="350">В корзину</button>
-      </div>
+    <div class="menu-grid" id="menu-grid">
+      <p style="padding: 20px;">Загрузка меню...</p>
     </div>
   </main>
 
@@ -42,12 +29,12 @@
     <h3>Ваш заказ</h3>
     <ul id="cart-items"></ul>
     <p>Итого: <span id="cart-total">0</span> ₽</p>
-    <button id="checkout-btn">Оформить</button>
-    <button id="close-cart">Закрыть</button>
+    <button id="checkout-btn" class="btn" style="width:100%; margin-top:10px;">Оформить заказ</button>
+    <button id="close-cart" class="btn" style="width:100%; background:#666; margin-top:5px;">Закрыть</button>
   </div>
   
   <button id="cart-fab">🛒 <span id="cart-count">0</span></button>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
