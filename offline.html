@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Полотно | Нет связи</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #F5F1E6;
+      color: #2C241B;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    .icon { font-size: 4em; margin-bottom: 20px; }
+    h1 { color: #8B4513; margin-bottom: 10px; }
+    p { color: #666; max-width: 400px; line-height: 1.6; }
+    .retry-btn {
+      margin-top: 30px;
+      background: #8B4513;
+      color: white;
+      border: none;
+      padding: 14px 30px;
+      border-radius: 25px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    .retry-btn:hover { background: #6d360f; }
+  </style>
+</head>
+<body>
+  <div class="icon">📡</div>
+  <h1>Нет связи</h1>
+  <p>Похоже, интернет пропал. Но не переживайте — как только связь появится, меню загрузится автоматически.</p>
+  <button class="retry-btn" onclick="window.location.reload()">Попробовать снова</button>
+</body>
+</html>
