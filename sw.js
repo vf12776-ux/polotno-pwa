@@ -1,34 +1,30 @@
-// sw.js - Продвинутое кэширование для слабой сети
+const CACHE_STATIC = 'polotno-static-v5';
+const CACHE_DYNAMIC = 'polotno-dynamic-v5';
+const CACHE_IMAGES = 'polotno-images-v5';
+const BASE_URL = '/polotno-pwa';
 
-const CACHE_STATIC = 'polotno-static-v4';
-const CACHE_DYNAMIC = 'polotno-dynamic-v4';
-const CACHE_IMAGES = 'polotno-images-v4';
-
-// Статические файлы (кэшируются при установке)
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/admin.html',
-  '/style.css',
-  '/manifest.json',
-  '/admin-manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/icon31-192.png',
-  '/icon31-512.png',
-  '/offline.html'
+  `${BASE_URL}/`,
+  `${BASE_URL}/index.html`,
+  `${BASE_URL}/admin.html`,
+  `${BASE_URL}/style.css`,
+  `${BASE_URL}/manifest.json`,
+  `${BASE_URL}/admin-manifest.json`,
+  `${BASE_URL}/icon-192.png`,
+  `${BASE_URL}/icon-512.png`,
+  `${BASE_URL}/icon31-192.png`,
+  `${BASE_URL}/icon31-512.png`,
+  `${BASE_URL}/offline.html`
 ];
 
-// Установка: кэшируем все статические файлы
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_STATIC)
       .then(cache => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting()) // Активируем сразу
+      .then(() => self.skipWaiting())
   );
 });
 
-// Активация: удаляем старые кэши
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
@@ -43,39 +39,32 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Обработка запросов
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. Фотографии товаров — кэшируем навечно (cache-first)
   if (url.hostname === 'i.ibb.co' || url.pathname.match(/\.(png|jpg|jpeg|webp|svg)$/)) {
     event.respondWith(cacheFirst(event.request, CACHE_IMAGES));
     return;
   }
 
-  // 2. Firebase SDK и внешние скрипты — кэшируем надолго (cache-first)
   if (url.hostname === 'www.gstatic.com' || url.hostname === 'apis.google.com') {
     event.respondWith(cacheFirst(event.request, CACHE_DYNAMIC));
     return;
   }
 
-  // 3. API-запросы к Firebase — сеть с fallback на кэш (network-first)
   if (url.hostname.includes('firestore.googleapis.com') || url.hostname.includes('firebaseio.com')) {
     event.respondWith(networkFirst(event.request, CACHE_DYNAMIC));
     return;
   }
 
-  // 4. HTML-страницы — кэш с обновлением в фоне (stale-while-revalidate)
   if (event.request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(staleWhileRevalidate(event.request, CACHE_STATIC));
     return;
   }
 
-  // 5. Остальные файлы (CSS, JS) — кэш с обновлением в фоне
   event.respondWith(staleWhileRevalidate(event.request, CACHE_DYNAMIC));
 });
 
-// Стратегия: Cache First (для картинок и SDK)
 async function cacheFirst(request, cacheName) {
   const cached = await caches.match(request);
   if (cached) return cached;
@@ -88,11 +77,10 @@ async function cacheFirst(request, cacheName) {
     }
     return response;
   } catch (err) {
-    return new Response('', { status: 408, statusText: 'Offline' });
+    return new Response('', { status: 408 });
   }
 }
 
-// Стратегия: Network First (для API-данных)
 async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
@@ -109,8 +97,6 @@ async function networkFirst(request, cacheName) {
   }
 }
 
-// Стратегия: Stale While Revalidate (для HTML, CSS, JS)
-// Показываем кэш мгновенно, обновляем в фоне
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
