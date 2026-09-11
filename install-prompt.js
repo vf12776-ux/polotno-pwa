@@ -18,7 +18,7 @@ if (isStandalone) {
   console.log('Приложение уже установлено');
 } else {
   window.addEventListener('load', () => {
-    setTimeout(showInstallButton, 1000); // Небольшая задержка для загрузки страницы
+    setTimeout(showInstallButton, 1000);
   });
 }
 
@@ -97,11 +97,18 @@ function showBrowserInstructions() {
   
   if (isYandex) {
     browserName = 'Яндекс Браузер';
+    const currentUrl = window.location.href;
     instructions = `
       <div style="text-align: left; margin: 20px 0;">
-        <p style="margin: 10px 0;"><strong>1.</strong> Нажмите на <strong>три точки</strong> в правом верхнем углу</p>
-        <p style="margin: 10px 0;"><strong>2.</strong> Выберите <strong>"Добавить на главный экран"</strong></p>
-        <p style="margin: 10px 0;"><strong>3.</strong> Подтвердите установку</p>
+        <p style="margin: 10px 0; color: #dc3545; font-weight: 600;">⚠️ Вы не в Chrome!</p>
+        <p style="margin: 10px 0;"><strong>1.</strong> Скопируйте ссылку:</p>
+        <div style="background: #f5f5f5; padding: 10px; border-radius: 8px; margin: 10px 0; word-break: break-all; font-size: 0.9em;">${currentUrl}</div>
+        <button onclick="copyToClipboard('${currentUrl}')" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9em; width: 100%; margin-bottom: 15px;">📋 Скопировать ссылку</button>
+        
+        <p style="margin: 10px 0;"><strong>2.</strong> Откройте в Chrome:</p>
+        <button onclick="openInChrome()" style="background: #4285f4; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9em; width: 100%; margin-bottom: 15px;">🌐 Открыть в Chrome</button>
+        
+        <p style="margin: 10px 0; color: #666; font-size: 0.85em;"><strong>3.</strong> В Chrome нажмите меню (три точки) → "Установить приложение" или "Добавить на главный экран"</p>
       </div>
     `;
   } else if (isSafari && isIOS) {
@@ -152,22 +159,54 @@ function showBrowserInstructions() {
   }
   
   modal.innerHTML = `
-    <div style="background: white; padding: 30px; border-radius: 20px; max-width: 450px; width: 100%; text-align: center; animation: slideUp 0.3s;">
+    <div style="background: white; padding: 30px; border-radius: 20px; max-width: 450px; width: 100%; text-align: center; animation: slideUp 0.3s; max-height: 90vh; overflow-y: auto;">
       <h3 style="margin-top: 0; color: #333; font-size: 1.5em;">Установить приложение</h3>
       <p style="color: #666; margin: 10px 0;">Откройте меню ${browserName} и выполните следующие шаги:</p>
       ${instructions}
-      <button onclick="document.getElementById('install-modal').remove()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 14px 40px; border-radius: 25px; cursor: pointer; font-size: 1em; font-weight: 600; margin-top: 20px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">Понятно</button>
+      <button onclick="document.getElementById('install-modal').remove()" style="background: #6c757d; color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-size: 0.95em; margin-top: 10px;">Закрыть</button>
     </div>
   `;
   
   document.body.appendChild(modal);
   
-  // Закрытие по клику вне модального окна
   modal.addEventListener('click', (e) => {
     if (e.target === modal) {
       modal.remove();
     }
   });
+}
+
+// Функция копирования ссылки
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Ссылка скопирована!');
+  }).catch(err => {
+    // Fallback для старых браузеров
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    alert('Ссылка скопирована!');
+  });
+}
+
+// Функция открытия в Chrome
+function openInChrome() {
+  const url = window.location.href;
+  
+  if (isAndroid) {
+    // Android: используем intent scheme
+    const intentUrl = `intent://${new URL(url).host}${new URL(url).pathname}#Intent;scheme=https;package=com.android.chrome;end`;
+    window.location.href = intentUrl;
+  } else if (isIOS) {
+    // iOS: используем googlechromes scheme
+    window.location.href = `googlechromes://${new URL(url).host}${new URL(url).pathname}`;
+  } else {
+    // Desktop: просто открываем новую вкладку (Chrome должен быть по умолчанию)
+    window.open(url, '_blank');
+  }
 }
 
 function removeInstallButton() {
