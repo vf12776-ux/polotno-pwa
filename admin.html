@@ -1,76 +1,280 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Админка | Полотно</title>
-  <link rel="manifest" href="admin-manifest.json">
-  <link rel="stylesheet" href="style.css">
-  <style>
-    .admin-container { max-width: 800px; margin: 20px auto; padding: 20px; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; }
-    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 1em; box-sizing: border-box; }
-    textarea { min-height: 80px; resize: vertical; }
-    .btn { background: var(--accent-color); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 1em; margin-right: 10px; margin-top: 10px; }
-    .btn:hover { background: #6d360f; }
-    .btn:disabled { background: #ccc; cursor: not-allowed; }
-    .product-list { margin-top: 30px; }
-    .product-item { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
-    .product-img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
-    .product-info { flex: 1; }
-    .delete-btn { background: #dc3545; padding: 8px 16px; font-size: 0.9em; }
-    .delete-btn:hover { background: #a71d2a; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>🔧 Управление меню</h1>
-    <p>Полотно (Администратор)</p>
-  </header>
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  <div class="admin-container">
-    <h2>Добавить новую позицию</h2>
-    <form id="product-form">
-      <div class="form-group">
-        <label>Название</label>
-        <input type="text" id="product-name" required placeholder="Например: Пышка с беконом">
-      </div>
-      <div class="form-group">
-        <label>Описание</label>
-        <textarea id="product-description" required placeholder="Состав и особенности"></textarea>
-      </div>
-      <div class="form-group">
-        <label>Цена (₽)</label>
-        <input type="number" id="product-price" required placeholder="250">
-      </div>
-      <div class="form-group">
-        <label>Категория</label>
-        <select id="product-category">
-          <option value="Пышки">Пышки</option>
-          <option value="Напитки">Напитки</option>
-          <option value="Другое">Другое</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Фотография товара</label>
-        <input type="file" id="product-image" accept="image/*">
-        <small style="color: #666;">Фото будет автоматически загружено в облако</small>
-      </div>
-      <button type="submit" class="btn" id="submit-btn">Добавить в меню</button>
-    </form>
-    <div class="orders-section" style="margin-bottom: 40px;">
-  <h2>🔔 Новые заказы</h2>
-  <div id="orders-container">Загрузка заказов...</div>
-</div>
+const firebaseConfig = {
+  apiKey: "AIzaSyDAtrTFNAZtj3DiLjm1uwFZyDtGwhWgG44",
+  authDomain: "polotno-bar-96a49.firebaseapp.com",
+  projectId: "polotno-bar-96a49",
+  storageBucket: "polotno-bar-96a49.firebasestorage.app",
+  messagingSenderId: "533968584563",
+  appId: "1:533968584563:web:2f27cea6816f3f16d14f06"
+};
 
-    <div class="product-list">
-      <h2>Текущее меню</h2>
-      <div id="products-container">Загрузка данных...</div>
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const IMGBB_API_KEY = "29646bda8d604823399d05e7fe7025ee";
+
+// ===== ВКЛАДКИ =====
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+  });
+});
+
+// ===== ЗВУК УВЕДОМЛЕНИЯ =====
+function playNotificationSound() {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
+  } catch (e) { console.log('Звук недоступен'); }
+}
+
+// ===== ЗАКАЗЫ =====
+const STATUS_LABELS = {
+  'new': 'Новый',
+  'preparing': 'Готовится',
+  'ready': 'Готов',
+  'done': 'Выдан',
+  'cancelled': 'Отменён'
+};
+
+let previousOrdersCount = 0;
+
+onSnapshot(collection(db, "orders"), (snapshot) => {
+  const activeContainer = document.getElementById('active-orders');
+  const historyContainer = document.getElementById('history-orders');
+  activeContainer.innerHTML = '';
+  historyContainer.innerHTML = '';
+  
+  const orders = snapshot.docs
+    .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+    .sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0));
+  
+  const activeOrders = orders.filter(o => ['new', 'preparing', 'ready'].includes(o.status));
+  const historyOrders = orders.filter(o => ['done', 'cancelled'].includes(o.status));
+  
+  // Активные заказы
+  if (activeOrders.length === 0) {
+    activeContainer.innerHTML = '<p style="color:#888; padding:15px; text-align:center;">Нет активных заказов</p>';
+  } else {
+    activeOrders.forEach(order => activeContainer.appendChild(renderOrder(order)));
+  }
+  
+  // История
+  if (historyOrders.length === 0) {
+    historyContainer.innerHTML = '<p style="color:#888; padding:15px; text-align:center;">История пуста</p>';
+  } else {
+    historyOrders.slice(0, 20).forEach(order => historyContainer.appendChild(renderOrder(order)));
+  }
+  
+  // Счётчик новых заказов и звук
+  const newCount = activeOrders.filter(o => o.status === 'new').length;
+  const counter = document.getElementById('new-orders-counter');
+  
+  if (newCount > 0) {
+    counter.textContent = newCount;
+    counter.style.display = 'inline';
+    document.title = `(${newCount}) 🔔 Админка Полотно`;
+  } else {
+    counter.style.display = 'none';
+    document.title = 'Админка | Полотно';
+  }
+  
+  // Звук при появлении НОВОГО заказа
+  if (newCount > previousOrdersCount && previousOrdersCount >= 0) {
+    playNotificationSound();
+    if (Notification.permission === 'granted') {
+      new Notification('🔔 Новый заказ!', {
+        body: `Поступил новый заказ на ${activeOrders.find(o => o.status === 'new')?.total || 0} ₽`,
+        icon: '/polotno-pwa/icon31-192.png'
+      });
+    }
+  }
+  previousOrdersCount = newCount;
+});
+
+function renderOrder(order) {
+  const item = document.createElement('div');
+  item.className = `order-item order-${order.status}`;
+  
+  const itemsList = order.items.map(i => `${i.name} × ${i.price}₽`).join('<br>');
+  const time = order.created_at?.toDate ? order.created_at.toDate().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
+  
+  // Кнопки действий в зависимости от статуса
+  let actions = '';
+  if (order.status === 'new') {
+    actions = `
+      <button class="btn-start" onclick="changeStatus('${order.id}', 'preparing')">▶ Взять в работу</button>
+      <button class="btn-cancel" onclick="cancelOrder('${order.id}')">✗ Отмена</button>
+    `;
+  } else if (order.status === 'preparing') {
+    actions = `
+      <button class="btn-ready" onclick="changeStatus('${order.id}', 'ready')">✓ Готов</button>
+      <button class="btn-cancel" onclick="cancelOrder('${order.id}')">✗ Отмена</button>
+    `;
+  } else if (order.status === 'ready') {
+    actions = `
+      <button class="btn-done" onclick="changeStatus('${order.id}', 'done')">🏁 Выдан</button>
+    `;
+  } else {
+    actions = `<span style="color:#888; font-size:0.85em;">Завершён</span>`;
+  }
+  
+  item.innerHTML = `
+    <div class="order-header">
+      <div>
+        <strong>Заказ #${order.id.slice(-4)}</strong>
+        <span style="color:#888; font-size:0.85em; margin-left:10px;">${time}</span>
+      </div>
+      <div style="text-align:right;">
+        <span class="order-status-badge status-${order.status}">${STATUS_LABELS[order.status]}</span>
+        <div style="font-weight:700; color:#8B4513; margin-top:5px;">${order.total} ₽</div>
+      </div>
     </div>
-  </div>
+    <div style="margin:10px 0; font-size:0.95em;">${itemsList}</div>
+    <div class="order-actions">${actions}</div>
+  `;
+  
+  return item;
+}
 
-  <script type="module" src="admin.js"></script>
-  <script src="install-prompt.js"></script>
-</body>
-</html>
+// Смена статуса
+window.changeStatus = async (orderId, newStatus) => {
+  await updateDoc(doc(db, "orders", orderId), { 
+    status: newStatus,
+    updated_at: new Date()
+  });
+};
+
+// Отмена заказа
+window.cancelOrder = async (orderId) => {
+  if (confirm('Отменить заказ?')) {
+    await updateDoc(doc(db, "orders", orderId), { 
+      status: 'cancelled',
+      updated_at: new Date()
+    });
+  }
+};
+
+// Запрос разрешения на уведомления
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
+
+// ===== ТОВАРЫ =====
+let editingProductId = null;
+
+onSnapshot(collection(db, "products"), (snapshot) => {
+  const container = document.getElementById('products-container');
+  container.innerHTML = '';
+  
+  if (snapshot.empty) {
+    container.innerHTML = '<p>Товаров пока нет. Добавьте первый!</p>';
+    return;
+  }
+  
+  snapshot.forEach((docSnap) => {
+    const product = docSnap.data();
+    const item = document.createElement('div');
+    item.className = 'product-item';
+    item.innerHTML = `
+      ${product.image_url ? `<img src="${product.image_url}" class="product-img" alt="${product.name}">` : '<div class="product-img" style="background:#eee;"></div>'}
+      <div class="product-info">
+        <strong>${product.name}</strong> - ${product.price} ₽<br>
+        <small>${product.description}</small><br>
+        <small style="color:#888;">${product.category}</small>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:5px;">
+        <button class="btn edit-btn" onclick="editProduct('${docSnap.id}')">✎</button>
+        <button class="btn delete-btn" onclick="deleteProduct('${docSnap.id}')">🗑</button>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+});
+
+// Добавление / редактирование товара
+document.getElementById('product-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const submitBtn = document.getElementById('submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Сохранение...';
+
+  try {
+    const fileInput = document.getElementById('product-image');
+    let imageUrl = null;
+
+    if (fileInput.files.length > 0) {
+      const formData = new FormData();
+      formData.append('image', fileInput.files[0]);
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      if (data.success) imageUrl = data.data.url;
+      else throw new Error('Ошибка загрузки фото');
+    }
+
+    const productData = {
+      name: document.getElementById('product-name').value,
+      description: document.getElementById('product-description').value,
+      price: parseInt(document.getElementById('product-price').value),
+      category: document.getElementById('product-category').value,
+      updated_at: new Date()
+    };
+
+    if (imageUrl) productData.image_url = imageUrl;
+
+    if (editingProductId) {
+      await updateDoc(doc(db, "products", editingProductId), productData);
+      editingProductId = null;
+      submitBtn.textContent = 'Добавить в меню';
+      alert('Товар обновлён!');
+    } else {
+      productData.created_at = new Date();
+      await addDoc(collection(db, "products"), productData);
+      alert('Товар добавлен!');
+    }
+
+    e.target.reset();
+  } catch (error) {
+    console.error(error);
+    alert('Ошибка: ' + error.message);
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
+
+window.editProduct = async (productId) => {
+  const snapshot = await getDocs(collection(db, "products"));
+  const product = snapshot.docs.find(d => d.id === productId)?.data();
+  if (!product) return;
+  
+  document.getElementById('product-name').value = product.name;
+  document.getElementById('product-description').value = product.description;
+  document.getElementById('product-price').value = product.price;
+  document.getElementById('product-category').value = product.category;
+  
+  editingProductId = productId;
+  document.getElementById('submit-btn').textContent = '💾 Сохранить изменения';
+  document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' });
+};
+
+window.deleteProduct = async (productId) => {
+  if (confirm('Удалить этот товар?')) {
+    await deleteDoc(doc(db, "products", productId));
+  }
+};
