@@ -243,3 +243,16 @@ window.deleteProduct = async (productId) => {
     await deleteDoc(doc(db, "products", productId));
   }
 };
+// Автоматическое обновление при появлении новой версии
+let refreshing = false;
+navigator.serviceWorker.addEventListener('controllerchange', () => {
+  if (refreshing) return;
+  refreshing = true;
+  window.location.reload();
+});
+
+setInterval(() => {
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (reg) reg.update();
+  });
+}, 60000);

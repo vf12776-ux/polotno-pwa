@@ -1,6 +1,6 @@
-const CACHE_STATIC = 'polotno-static-v5';
-const CACHE_DYNAMIC = 'polotno-dynamic-v5';
-const CACHE_IMAGES = 'polotno-images-v5';
+const CACHE_STATIC = 'polotno-static-v6';
+const CACHE_DYNAMIC = 'polotno-dynamic-v6';
+const CACHE_IMAGES = 'polotno-images-v6';
 const BASE_URL = '/polotno-pwa';
 
 const STATIC_ASSETS = [

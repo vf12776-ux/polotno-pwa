@@ -152,3 +152,17 @@ document.getElementById('checkout-btn').addEventListener('click', async () => {
 renderMenuFromCache();
 updateCartUI();
 loadMenuFromFirebase();
+// Автоматическое обновление при появлении новой версии
+let refreshing = false;
+navigator.serviceWorker.addEventListener('controllerchange', () => {
+  if (refreshing) return;
+  refreshing = true;
+  window.location.reload();
+});
+
+// Периодически проверяем наличие нового SW (раз в минуту)
+setInterval(() => {
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (reg) reg.update();
+  });
+}, 60000);
