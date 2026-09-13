@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDAtrTFNAZtj3DiLjm1uwFZyDtGwhWgG44",
@@ -15,7 +15,7 @@ const db = getFirestore(app);
 
 // Регистрация Service Worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js')
+  navigator.serviceWorker.register('/polotno-pwa/sw.js')
     .then(reg => console.log('SW зарегистрирован:', reg.scope))
     .catch(err => console.log('Ошибка SW:', err));
 }
@@ -120,15 +120,32 @@ document.getElementById('close-cart').addEventListener('click', () => {
   document.getElementById('cart-modal').classList.add('hidden');
 });
 
-document.getElementById('checkout-btn').addEventListener('click', () => {
+// Оформление заказа — сохраняем в Firebase
+document.getElementById('checkout-btn').addEventListener('click', async () => {
   if (cart.length === 0) {
     alert('Корзина пуста!');
     return;
   }
-  alert('Заказ оформлен! Сумма: ' + document.getElementById('cart-total').textContent + ' ₽');
-  cart = [];
-  updateCartUI();
-  document.getElementById('cart-modal').classList.add('hidden');
+  
+  const total = cart.reduce((sum, item) => sum + item.price, 0);
+  
+  try {
+    // Сохраняем заказ в Firestore
+    await addDoc(collection(db, "orders"), {
+      items: cart,
+      total: total,
+      status: 'new',
+      created_at: serverTimestamp()
+    });
+    
+    alert(`Заказ оформлен! Сумма: ${total} ₽\nБармен уже получил уведомление.`);
+    cart = [];
+    updateCartUI();
+    document.getElementById('cart-modal').classList.add('hidden');
+  } catch (error) {
+    console.error('Ошибка оформления заказа:', error);
+    alert('Не удалось оформить заказ. Проверьте интернет.');
+  }
 });
 
 // ЗАПУСК: сначала кэш (мгновенно), потом Firebase (в фоне)
